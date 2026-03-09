@@ -1,0 +1,134 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+
+function Companies({ isOwner, items, setItems }) {
+  const [search, setSearch]   = useState("");
+  const [stageF, setStageF]   = useState("ALL");
+  const [selected, setSelected] = useState(null);
+  const [modal, setModal]     = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  // ── sync: when items changes externally, keep selected in sync ──
+  useEffect(() => {
+    if (selected) {
+      const updated = items.find(x => x.id === selected.id);
+      if (updated) setSelected(updated); else setSelected(null);
+    }
+  }, [items]);
+
+  const filtered = items.filter(c => {
+    const ok = stageF === "ALL" || c.stage === stageF;
+    if (!ok) return false;
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return [c.name,c.industry,c.headquarters,c.stage,...(c.tags||[]),...(c.hiringTechnologies||[])].some(v=>typeof v==="string"&&v.toLowerCase().includes(s));
+  });
+
+  const handleSave = co => {
+    setItems(prev => editing ? prev.map(x=>x.id===co.id?co:x) : [...prev, co]);
+    setModal(false); setEditing(null);
+  };
+
+  if (selected) return (
+    <CompanyDetail c={selected} onBack={()=>setSelected(null)} isOwner={isOwner}
+      onDelete={id=>{setItems(p=>p.filter(x=>x.id!==id));setSelected(null);}}
+      onEdit={()=>{setEditing(selected);setSelected(null);setModal(true);}}/>
+  );
+
+  return (
+    <div style={{ height:"100%",display:"flex",flexDirection:"column",gap:14 }}>
+      {modal && <CompanyModal existing={editing} onSave={handleSave} onClose={()=>{setModal(false);setEditing(null);}}/>}
+
+      {/* search + controls */}
+      <div style={{ display:"flex",gap:10,alignItems:"center",flexWrap:"wrap" }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search companies, tech, industry…"/>
+        {isOwner && <button className="btn btn-cyan" onClick={()=>{setEditing(null);setModal(true);}}>
+          <Ico d="M12 5v14M5 12h14" s={13}/>Add Company
+        </button>}
+      </div>
+
+      {/* stage filter pills */}
+      <div style={{ display:"flex",gap:6,flexWrap:"wrap",alignItems:"center" }}>
+        {["ALL","Public","Private","Startup","Series A","Series B","Series C+","Growth"].map(s=>(
+          <button key={s} onClick={()=>setStageF(s)} style={{
+            padding:"5px 12px",borderRadius:20,fontFamily:"var(--font-mono)",fontSize:10,fontWeight:600,
+            cursor:"pointer",border:"1px solid",transition:"all .15s",letterSpacing:".04em",textTransform:"uppercase",
+            background: stageF===s ? (STAGE_COL[s]||"#0097b2")+"22" : "rgba(255,255,255,.04)",
+            borderColor: stageF===s ? (STAGE_COL[s]||"#0097b2")+"55" : "var(--border2)",
+            color: stageF===s ? (STAGE_COL[s]||"#0097b2") : "var(--text3)",
+          }}>{s}</button>
+        ))}
+        <span style={{ fontFamily:"var(--font-mono)",fontSize:9,color:"var(--text3)",marginLeft:6 }}>{filtered.length} results</span>
+      </div>
+
+      {items.length===0 ? (
+        <div className="empty">
+          <div style={{ width:60,height:60,borderRadius:16,background:"rgba(0,151,178,.1)",border:"1px solid rgba(0,151,178,.2)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <Ico d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" s={26} c="#0097b2"/>
+          </div>
+          <div style={{ fontFamily:"Plus Jakarta Sans,var(--font-accent)",fontWeight:700,fontSize:18,color:"var(--text)" }}>{isOwner?"No companies yet":"No companies available"}</div>
+          <div style={{ fontSize:13,maxWidth:320,lineHeight:1.65,color:"var(--text2)" }}>{isOwner?"Type a company name — AI fetches the full intelligence profile instantly.":"The owner hasn't added companies yet."}</div>
+          {isOwner && <button className="btn btn-cyan" onClick={()=>setModal(true)}>Add First Company</button>}
+        </div>
+      ) : (
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",
+          gap:18, overflowY:"auto", flex:1, paddingRight:4
+        }} className="scrollbar">
+          {filtered.map((c,i)=>{
+            const grad  = coGrad(c.name);
+            const stKey = c.stage?.includes("Public")?"Public":c.stage?.includes("Growth")?"Growth":c.stage||"";
+            const stCol = STAGE_COL[stKey]||STAGE_COL[c.stage]||"#0097b2";
+            const KNOWN_DOMAINS = {
+              "google":"google.com","meta":"meta.com","facebook":"facebook.com",
+              "apple":"apple.com","microsoft":"microsoft.com","amazon":"amazon.com",
+              "netflix":"netflix.com","tesla":"tesla.com","nvidia":"nvidia.com",
+              "tcs":"tcs.com","infosys":"infosys.com","wipro":"wipro.com",
+              "razorpay":"razorpay.com","zomato":"zomato.com","swiggy":"swiggy.com",
+              "flipkart":"flipkart.com","paytm":"paytm.com","cred":"getcred.app",
+              "meesho":"meesho.com","groww":"groww.in","zepto":"zeptonow.com",
+              "ola":"olacabs.com","freshworks":"freshworks.com","zoho":"zoho.com",
+              "digitalocean":"digitalocean.com","stripe":"stripe.com",
+              "shopify":"shopify.com","airbnb":"airbnb.com","uber":"uber.com",
+              "linkedin":"linkedin.com","slack":"slack.com","adobe":"adobe.com",
+              "oracle":"oracle.com","ibm":"ibm.com","intel":"intel.com",
+              "zensar":"zensar.com","digicert":"digicert.com","sikich":"sikich.com",
+              "fanatics":"fanatics.com","creditsafe":"creditsafe.com",
+              "bristlecone":"bristlecone.com","motherson":"mothersongroup.com",
+              "cimpress":"cimpress.com","insight":"insight.com",
+              "billdesk":"billdesk.com","pine labs":"pinelabs.com",
+              "phonepe":"phonepe.com","zerodha":"zerodha.com",
+            };
+            const nameKey = (c.name||"").toLowerCase().replace(/[^a-z ]/g,"");
+            const knownDomain = Object.entries(KNOWN_DOMAINS)
+              .find(([k])=>nameKey.includes(k))?.[1];
+            const fallbackDomain = (c.website||"")
+              .replace(/^https?:\/\//,"").replace(/^www\./,"").split("/")[0]
+              || (c.name||"").toLowerCase().replace(/[^a-z0-9]/g,"")+".com";
+            const logoUrl = c.logoUrl || `https://logo.clearbit.com/${knownDomain||fallbackDomain}`;
+            const initials = (c.name||"?").split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+            const tags = [c.industry, ...(c.tags||[])].filter(Boolean).slice(0,3);
+
+            return (
+              <SpotifyCompanyCard
+                key={c.id}
+                c={c} i={i}
+                grad={grad} stCol={stCol}
+                logoUrl={logoUrl} initials={initials}
+                tags={tags} stKey={stKey}
+                isOwner={isOwner}
+                onSelect={()=>setSelected(c)}
+                onEdit={()=>{setEditing(c);setModal(true);}}
+                onDelete={()=>setItems(p=>p.filter(x=>x.id!==c.id))}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* GENERIC SECTION */
+
+export default Companies;

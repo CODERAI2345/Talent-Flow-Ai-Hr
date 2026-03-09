@@ -1,0 +1,186 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+
+function StartupCard({ item, idx, offset, total, isLeaving, enterDir, onSwipe }) {
+  const pal  = STARTUP_PALETTES[idx % STARTUP_PALETTES.length];
+  const sc   = STAGECOL[item.stage] || "#F59E0B";
+  const drag = useRef({ x:0, touchX:0, active:false });
+
+  /* Depth stack transform — cards behind shrink + shift up */
+  const scl = 1 - offset * 0.052;
+  const ty  = -offset * 16;
+  const rot = offset === 0 ? 0 : offset === 1 ? -1.5 : -2.8;  // subtle tilt for depth
+  const op  = offset === 0 ? 1 : offset === 1 ? 0.68 : 0.42;
+
+  let animCls = "";
+  if (isLeaving === "left")              animCls = "su-exit-l";
+  if (isLeaving === "right")             animCls = "su-exit-r";
+  if (offset === 0 && enterDir === "right") animCls = "su-enter";
+  if (offset === 0 && enterDir === "left")  animCls = "su-enter-l";
+
+  /* Mouse + touch drag handling */
+  const startDrag = (clientX) => {
+    if (offset !== 0) return;
+    drag.current = { x: clientX, active: true };
+    const onEnd = (ev) => {
+      if (!drag.current.active) return;
+      drag.current.active = false;
+      const dx = (ev.clientX ?? ev.changedTouches?.[0]?.clientX ?? drag.current.x) - drag.current.x;
+      if (Math.abs(dx) > 44) onSwipe(dx < 0 ? "left" : "right");
+      window.removeEventListener("mouseup", onEnd);
+      window.removeEventListener("touchend", onEnd);
+    };
+    window.addEventListener("mouseup", onEnd);
+    window.addEventListener("touchend", onEnd);
+  };
+
+  return (
+    <div
+      className={`su-card ${animCls}`}
+      onMouseDown={e => startDrag(e.clientX)}
+      onTouchStart={e => startDrag(e.touches[0].clientX)}
+      style={{
+        transform: animCls ? undefined : `translateY(${ty}px) scale(${scl}) rotate(${rot}deg)`,
+        opacity: op,
+        zIndex: total - offset,
+        pointerEvents: offset === 0 ? "auto" : "none",
+        boxShadow: offset === 0
+          ? `0 40px 100px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.07), 0 0 60px ${pal.a}`
+          : "0 8px 28px rgba(0,0,0,0.45)",
+      }}
+    >
+      {/* ── Layer 1: Rich background gradient (simulated photo backdrop) ── */}
+      <div className="su-bg" style={{
+        background:`
+          radial-gradient(ellipse at 18% 20%, ${pal.a} 0%, transparent 52%),
+          radial-gradient(ellipse at 82% 78%, ${pal.b} 0%, transparent 52%),
+          radial-gradient(ellipse at 50% 0%,  ${pal.c} 0%, transparent 70%),
+          linear-gradient(158deg, #0C0E1A 0%, #111525 50%, #090B12 100%)
+        `
+      }} />
+
+      {/* ── Layer 2: Diagonal grid (subtle depth texture) ── */}
+      <div style={{
+        position:"absolute", inset:0, zIndex:1, opacity:0.055, pointerEvents:"none",
+        backgroundImage:"linear-gradient(rgba(255,255,255,0.7) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.7) 1px,transparent 1px)",
+        backgroundSize:"40px 40px"
+      }} />
+
+      {/* ── Layer 3: Multi-stop cinematic image overlay ── */}
+      <div className="su-overlay" />
+
+      {/* ── Layer 4: Diagonal specular shine (glassmorphism) ── */}
+      {offset === 0 && <div className="su-shine" />}
+
+      {/* ── Layer 5: Coloured glow strip at bottom edge ── */}
+      {offset === 0 && (
+        <div style={{
+          position:"absolute", bottom:0, left:0, right:0, height:"60%", zIndex:2, pointerEvents:"none",
+          background:`linear-gradient(to top, ${sc}28 0%, transparent 100%)`,
+          borderRadius:"0 0 26px 26px"
+        }} />
+      )}
+
+      {/* ── Top row: Stage badge + equity ── */}
+      <div className="su-top">
+        <span className="tag" style={{
+          background:`${sc}22`, color:sc, border:`1px solid ${sc}55`,
+          backdropFilter:"blur(10px)", fontSize:9, letterSpacing:"0.12em"
+        }}>{item.stage || "Startup"}</span>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
+          {item.equity && (
+            <span style={{
+              fontSize:10, color:"#B8FF5E", fontWeight:700, fontFamily:"DM Mono",
+              background:"rgba(184,255,94,0.1)", border:"1px solid rgba(184,255,94,0.35)",
+              padding:"3px 9px", borderRadius:6, backdropFilter:"blur(8px)"
+            }}>{item.equity}</span>
+          )}
+          {item.headcount && (
+            <span className="su-counter">{item.headcount}</span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Body: bottom content block ── */}
+      <div className="su-body">
+        {/* Company avatar */}
+        <div style={{
+          width:46, height:46, borderRadius:13,
+          background:`linear-gradient(135deg, ${sc}45, ${sc}14)`,
+          border:`1.5px solid ${sc}60`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          marginBottom:10, backdropFilter:"blur(12px)",
+          boxShadow:`0 0 24px ${sc}30`
+        }}>
+          <span className="f-display" style={{ fontSize:20, color:sc, fontWeight:700 }}>
+            {(item.name || "S")[0]}
+          </span>
+        </div>
+
+        {/* Name */}
+        <div className="f-display" style={{
+          fontSize:22, color:"#fff", fontWeight:700, letterSpacing:-0.6,
+          marginBottom:2, lineHeight:1.1,
+          textShadow:`0 2px 20px rgba(0,0,0,0.7), 0 0 40px ${sc}25`
+        }}>{item.name}</div>
+
+        {/* Meta row */}
+        <div className="f-mono" style={{
+          fontSize:9, color:"rgba(255,255,255,0.4)", letterSpacing:"0.14em", marginBottom:10
+        }}>
+          {[item.industry, item.founded && `EST. ${item.founded}`].filter(Boolean).join(" · ")}
+        </div>
+
+        {/* Description */}
+        {item.description && (
+          <p style={{
+            fontSize:11, color:"rgba(255,255,255,0.52)", lineHeight:1.65, marginBottom:10,
+            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden"
+          }}>{item.description}</p>
+        )}
+
+        {/* Tech pills */}
+        {item.technologies && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:13 }}>
+            {item.technologies.split(",").slice(0,4).map((t,i) => (
+              <span key={i} style={{
+                padding:"2px 8px",
+                background:"rgba(255,255,255,0.06)",
+                border:"1px solid rgba(255,255,255,0.1)",
+                borderRadius:4, fontSize:9, color:"rgba(255,255,255,0.6)",
+                fontFamily:"DM Mono", backdropFilter:"blur(6px)"
+              }}>{t.trim()}</span>
+            ))}
+          </div>
+        )}
+
+        {/* CTA row */}
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          {item.jobsUrl && (
+            <a href={item.jobsUrl} target="_blank" rel="noopener noreferrer" style={{
+              padding:"8px 15px", background:sc, color:"#0D0F14",
+              borderRadius:8, fontSize:10, fontWeight:700, fontFamily:"Outfit",
+              textDecoration:"none", boxShadow:`0 0 20px ${sc}50`
+            }}>View Jobs →</a>
+          )}
+          {item.linkedinUrl && (
+            <a href={item.linkedinUrl} target="_blank" rel="noopener noreferrer" style={{
+              padding:"8px 12px",
+              background:"rgba(255,255,255,0.06)",
+              color:"rgba(255,255,255,0.72)",
+              border:"1px solid rgba(255,255,255,0.12)",
+              borderRadius:8, fontSize:10, fontFamily:"Outfit", textDecoration:"none",
+              backdropFilter:"blur(8px)"
+            }}>LinkedIn</a>
+          )}
+          {offset === 0 && (
+            <span style={{ marginLeft:"auto", fontSize:8, color:"rgba(255,255,255,0.2)", fontFamily:"DM Mono", letterSpacing:"0.08em" }}>
+              ← swipe →
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default StartupCard;

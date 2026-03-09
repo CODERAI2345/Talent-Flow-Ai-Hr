@@ -1,0 +1,20 @@
+// Shared persistent storage (window.storage — shared across all users)
+
+export const LS_KEY_CO  = "tf_coData_v2";
+export const LS_KEY_SEC = "tf_secData_v2";
+export const LS_KEY_SET = "tf_settings_v2";
+
+export async function storageGet(key, fallback) {
+  try {
+    const r = await window.storage.get(key, true);
+    return r ? JSON.parse(r.value) : fallback;
+  } catch { return fallback; }
+}
+
+export async function storageSave(key, value) {
+  try { await window.storage.set(key, JSON.stringify(value), true); } catch {}
+}
+
+// Legacy no-op stubs
+export function lsLoad(k, d) { return d; }
+export function lsSave(k, v) {}

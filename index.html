@@ -1,0 +1,47 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+
+function StyledInitials({ grad, stCol, initials, name }) {
+  // Pick icon based on industry keywords
+  const n = (name||"").toLowerCase();
+  const iconPath = n.includes("bank")||n.includes("pay")||n.includes("fin")
+    ? "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    : n.includes("health")||n.includes("med")||n.includes("pharma")
+    ? "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+    : n.includes("cloud")||n.includes("aws")||n.includes("azure")
+    ? "M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+    : n.includes("ai")||n.includes("ml")||n.includes("data")
+    ? "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+    : "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z";
+
+  return (
+    <div style={{
+      width:82, height:82, borderRadius:20, flexShrink:0,
+      background:grad, position:"relative", overflow:"hidden",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      boxShadow:`0 8px 28px rgba(0,0,0,.5), 0 0 0 2px ${stCol}35`,
+      zIndex:2,
+    }}>
+      {/* shine */}
+      <div style={{ position:"absolute", inset:0,
+        background:"linear-gradient(135deg,rgba(255,255,255,.25) 0%,transparent 55%)",
+        pointerEvents:"none" }}/>
+      {/* icon */}
+      <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
+        stroke="rgba(255,255,255,.9)" strokeWidth="1.5" strokeLinecap="round"
+        style={{ marginBottom:4 }}>
+        <path d={iconPath}/>
+      </svg>
+      {/* initials */}
+      <div style={{ fontFamily:"Plus Jakarta Sans,sans-serif", fontWeight:800,
+        fontSize:13, color:"rgba(255,255,255,.95)", letterSpacing:"-.3px",
+        lineHeight:1, textAlign:"center", maxWidth:70,
+        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+        padding:"0 4px" }}>
+        {initials}
+      </div>
+    </div>
+  );
+}
+
+export default StyledInitials;
